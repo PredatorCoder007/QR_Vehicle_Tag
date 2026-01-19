@@ -65,15 +65,33 @@ def generate():
 
     #show QR on browser
     return f"""
-    <h2>QR Generated Successfully</h2>
-    <p>Scan this QR to contact owner</p>
-    <img src= "/{qr_path}" width = "300"><br><br>
-    <a href="/{qr_path}" download> Download QR </a>
-    """
+    <!DOCTYPE html>
+    <html>
+<head>
+  <title>Your QR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
 
+  <div class="bg-white p-6 rounded-xl shadow-md text-center max-w-sm w-full">
+    <h2 class="text-xl font-bold mb-4">QR Generated</h2>
 
+    <img src="/static/{uid}.png" class="mx-auto w-64 h-64 mb-4">
 
+    <a href="/static/{uid}.png" download
+       class="block bg-green-600 text-white py-2 rounded-lg mb-2">
+      Download QR
+    </a>
 
+    <p class="text-gray-500 text-sm">
+      Stick this QR on your vehicle
+    </p>
+  </div>
+
+</body>
+</html>
+"""
+  
 
 
 
@@ -89,10 +107,33 @@ def show(uid):
         return "Invalid QR"
 
     return f"""
-    <h2>{row[0]}</h2>
-    <p>Vehicle: {row[2]}</p>
-    <a href="tel:{row[1]}">Call Owner</a>
-    """
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vehicle Owner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-6 rounded-xl shadow-md text-center max-w-sm w-full">
+    <h2 class="text-xl font-bold mb-2">{row[0]}</h2>
+    <p class="text-gray-600 mb-4">Vehicle: {row[2]}</p>
+
+    <a href="tel:{row[1]}"
+       class="block bg-blue-600 text-white py-3 rounded-lg">
+      📞 Call Owner
+    </a>
+
+    <p class="text-xs text-gray-400 mt-4">
+      Scan QR to contact vehicle owner
+    </p>
+  </div>
+
+</body>
+</html>
+"""
+
 
 # if __name__ == "__main__":
 #     app.run(debug=True)
