@@ -3,13 +3,15 @@ import sqlite3
 import uuid
 import qrcode
 import os
-
+from datetime import datetime
 
 app = Flask(__name__)
 
 def init_db():
     conn = sqlite3.connect("data.db")
     c = conn.cursor()
+    
+    #Owners table
     c.execute("""
         CREATE TABLE IF NOT EXISTS owners (
             id TEXT PRIMARY KEY,
@@ -18,6 +20,16 @@ def init_db():
             vehicle TEXT
         )
     """)
+
+    #Scan logs table
+    c.execute("""
+          CREATE TABLE IF NOT EXISTS scan_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              owner_id TEXT,
+              scanned_at TEXT
+              )
+              """)
+    
     conn.commit()
     conn.close()
 
@@ -99,40 +111,57 @@ def generate():
 def show(uid):
     conn = sqlite3.connect("data.db")
     c = conn.cursor()
+
+    #fetch owner details
     c.execute("SELECT name, phone, vehicle FROM owners WHERE id=?", (uid,))
     row = c.fetchone()
     conn.close()
 
     if not row:
         return "Invalid QR"
+    
+    #------------------------------
+    # LOG THE SCAN
+    #------------------------------
+    scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    c.execute(
+        "INSERT INTO scan_logs (owner_id, scanned_at) VALUES (?,?)",
+        (uid, scan_time)
+    )
+
+    conn.commit()
+    conn.close()
 
     return f"""
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Vehicle Owner</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Vehicle Owner</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+      <div class="bg-white p-6 rounded-xl shadow-md text-center max-w-sm w-full">
+        <h2 class="text-xl font-bold mb-2">{row[0]}</h2>
+        <p class="text-gray-600 mb-4">Vehicle: {row[2]}</p>
+        <a href="tel:{row[1]}"
+           class="block bg-blue-600 text-white py-3 rounded-lg">
+          📞 Call Owner
+        </a>
+      </div>
+    </body>
+    </html>
+    """
 
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+@app.route("/debug/scans")
+def debug_scans():
+    conn = sqlite3.connect("data.db")
+    c = conn.cursor()
+    c.execute("SELECT owner_id, scanned_at FROM scan_logs")
+    rows = c.fetchall()
+    conn.close()
 
-  <div class="bg-white p-6 rounded-xl shadow-md text-center max-w-sm w-full">
-    <h2 class="text-xl font-bold mb-2">{row[0]}</h2>
-    <p class="text-gray-600 mb-4">Vehicle: {row[2]}</p>
-
-    <a href="tel:{row[1]}"
-       class="block bg-blue-600 text-white py-3 rounded-lg">
-      📞 Call Owner
-    </a>
-
-    <p class="text-xs text-gray-400 mt-4">
-      Scan QR to contact vehicle owner
-    </p>
-  </div>
-
-</body>
-</html>
-"""
+    return "<br>".join([f"{r[0]} — {r[1]}" for r in rows])
 
 
 # if __name__ == "__main__":
