@@ -112,21 +112,21 @@ def show(uid):
     conn = sqlite3.connect("data.db")
     c = conn.cursor()
 
-    #fetch owner details
+    # Fetch owner details
     c.execute("SELECT name, phone, vehicle FROM owners WHERE id=?", (uid,))
     row = c.fetchone()
-    conn.close()
 
     if not row:
+        conn.close()
         return "Invalid QR"
-    
-    #------------------------------
+
+    # -------------------------
     # LOG THE SCAN
-    #------------------------------
+    # -------------------------
     scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     c.execute(
-        "INSERT INTO scan_logs (owner_id, scanned_at) VALUES (?,?)",
+        "INSERT INTO scan_logs (owner_id, scanned_at) VALUES (?, ?)",
         (uid, scan_time)
     )
 
@@ -164,10 +164,10 @@ def debug_scans():
     return "<br>".join([f"{r[0]} — {r[1]}" for r in rows])
 
 
-# if __name__ == "__main__":
-#     app.run(debug=True)
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)
+
+# if __name__ == "__main__":
+#     port = int(os.environ.get("PORT", 5000))
+#     app.run(host="0.0.0.0", port=port)
 
