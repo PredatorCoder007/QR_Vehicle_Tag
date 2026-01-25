@@ -7,7 +7,7 @@ from db import get_db_connection
 import psycopg2
 import psycopg2.extras
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from dotenv import load_dotenv
 
 load_dotenv()
 app = Flask(__name__)
