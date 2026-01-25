@@ -9,8 +9,9 @@ import psycopg2.extras
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
+load_dotenv()
 app = Flask(__name__)
-app.secret_key = "dev-secret-key-change-later"
+app.secret_key =os.environ.get("SECRET_KEY")
 
 
 # -------------------------
