@@ -8,44 +8,12 @@ import psycopg2
 import psycopg2.extras
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+from PIL import Image, ImageDraw, ImageFont
 
-load_dotenv()
+# load_dotenv()
 app = Flask(__name__)
 app.secret_key =os.environ.get("SECRET_KEY")
 
-
-# -------------------------
-# Initialize Database
-# -------------------------
-# def init_db():
-#     conn = sqlite3.connect("data.db")
-#     c = conn.cursor()
-    
-#     # Owners table
-#     c.execute("""
-#         CREATE TABLE IF NOT EXISTS owners (
-#             id TEXT PRIMARY KEY,
-#             name TEXT,
-#             phone TEXT,
-#             vehicle TEXT
-#         )
-#     """)
-
-#     # Scan logs table
-#     c.execute("""
-#         CREATE TABLE IF NOT EXISTS scan_logs (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             owner_id TEXT,
-#             scanned_at TEXT,
-#             latitude REAL,
-#             longitude REAL
-#         )
-#     """)
-    
-#     conn.commit()
-#     conn.close()
-
-# init_db()
 
 
 # -------------------------
@@ -92,7 +60,7 @@ def log_location():
 # -------------------------
 @app.route("/")
 def form():
-    return render_template("form.html")  # We'll create responsive form.html in templates/
+    return render_template("home.html")  # We'll create responsive form.html in templates/
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -125,11 +93,7 @@ def signup():
             c.close()
             conn.close()
 
-        return f"""
-        <h2>Signup successful!</h2>
-        <p>Your QR is ready.</p>
-        <a href="/generate">Generate QR</a>
-        """
+        return redirect(url_for("dashboard"))
 
     return render_template("signup.html")
 
@@ -275,28 +239,136 @@ def dashboard():
 
 #     return redirect("/dashboard")
 
-
 @app.route("/generate", methods=["POST"])
 def generate_qr():
     if "owner_id" not in session:
-        print("❌ No owner_id in session")
         return redirect("/login")
 
     owner_id = session["owner_id"]
-    print("✅ Generating QR for:", owner_id)
-
     qr_url = f"{request.host_url}q/{owner_id}"
-    print("QR URL:", qr_url)
 
-    qr = qrcode.make(qr_url)
+    import qrcode
+    from PIL import Image, ImageDraw, ImageFont
+    import os
 
-    if not os.path.exists("static"):
-        os.makedirs("static")
+    # ================= CONFIG =================
+    STICKER_SIZE = 720
+    OUTER_RADIUS = 60
 
-    qr_path = f"static/{owner_id}.png"
-    qr.save(qr_path)
-    print("✅ QR saved at:", qr_path)
+    YELLOW = "#FFD500"
+    QR_COLOR = "#166077"
+    TEXT_COLOR = "#111111"
 
+    QR_SIZE = 400
+
+    OUTPUT_DIR = "static/qr"
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    # ================= BASE STICKER =================
+    sticker = Image.new("RGBA", (STICKER_SIZE, STICKER_SIZE), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(sticker)
+
+    # Outer rounded yellow box
+    draw.rounded_rectangle(
+        (0, 0, STICKER_SIZE, STICKER_SIZE),
+        radius=OUTER_RADIUS,
+        fill=YELLOW
+    )
+
+    # ================= INNER WHITE CARD =================
+    MARGIN = 55
+    BOTTOM_SPACE = 160
+
+    WHITE_LEFT   = MARGIN
+    WHITE_TOP    = MARGIN
+    WHITE_RIGHT  = STICKER_SIZE - MARGIN
+    WHITE_BOTTOM = STICKER_SIZE - BOTTOM_SPACE
+
+    WHITE_WIDTH  = WHITE_RIGHT - WHITE_LEFT
+    WHITE_HEIGHT = WHITE_BOTTOM - WHITE_TOP
+
+    draw.rounded_rectangle(
+        (WHITE_LEFT, WHITE_TOP, WHITE_RIGHT, WHITE_BOTTOM),
+        radius=40,
+        fill="white"
+    )
+
+    # ================= QR GENERATION =================
+    qr = qrcode.QRCode(
+        version=3,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=1
+    )
+    qr.add_data(qr_url)
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(
+        fill_color=QR_COLOR,
+        back_color="white"
+    ).convert("RGBA")
+
+    qr_img = qr_img.resize((QR_SIZE, QR_SIZE))
+
+    # ================= CENTER QR PERFECTLY =================
+    qr_x = WHITE_LEFT + (WHITE_WIDTH - QR_SIZE) // 2
+    qr_y = WHITE_TOP + (WHITE_HEIGHT - QR_SIZE) // 2
+
+    sticker.paste(qr_img, (qr_x, qr_y), qr_img)
+
+    # ================= FONTS =================
+    try:
+        font_bold = ImageFont.truetype("arialbd.ttf", 36)
+        font = ImageFont.truetype("arial.ttf", 26)
+    except:
+        font_bold = font = ImageFont.load_default()
+
+    # ================= WEBSITE TEXT =================
+    draw.text(
+        (STICKER_SIZE // 2, qr_y + QR_SIZE + 18),
+        "letstrackme.com",
+        fill=TEXT_COLOR,
+        font=font,
+        anchor="mm"
+    )
+
+    # ================= SIDE "SCAN ME" =================
+    side_text = Image.new("RGBA", (220, 40), (0, 0, 0, 0))
+    side_draw = ImageDraw.Draw(side_text)
+    side_draw.text(
+        (110, 20),
+        "Scan Me",
+        fill=TEXT_COLOR,
+        font=font,
+        anchor="mm"
+    )
+
+    sticker.paste(
+        side_text.rotate(90, expand=True),
+        (WHITE_LEFT + 10, qr_y + 80),
+        side_text.rotate(90, expand=True)
+    )
+
+    sticker.paste(
+        side_text.rotate(-90, expand=True),
+        (WHITE_RIGHT - 55, qr_y + 80),
+        side_text.rotate(-90, expand=True)
+    )
+
+    # ================= CTA =================
+    draw.text(
+        (STICKER_SIZE // 2, STICKER_SIZE - 70),
+        "SCAN TO CONTACT OWNER",
+        fill=QR_COLOR,
+        font=font_bold,
+        anchor="mm"
+    )
+
+    # ================= SAVE =================
+    qr_path = f"{OUTPUT_DIR}/{owner_id}.png"
+    sticker.save(qr_path, "PNG")
+
+    # ================= DB UPDATE =================
     conn = get_db_connection()
     c = conn.cursor()
     c.execute(
@@ -307,12 +379,7 @@ def generate_qr():
     c.close()
     conn.close()
 
-    print("✅ Database updated")
-
     return redirect("/dashboard")
-
-
-
 
 
 
