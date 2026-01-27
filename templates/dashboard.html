@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owner Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen p-4">
+
+  <div class="max-w-3xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-xl shadow text-center">
+      <h1 class="text-2xl font-bold">{{ owner.name }}</h1>
+      <p class="text-gray-600">Vehicle: {{ owner.vehicle }}</p>
+    </div>
+
+    <!-- QR Section -->
+    <div class="bg-white p-6 rounded-xl shadow text-center">
+
+      <h2 class="text-lg font-semibold mb-4">Your Vehicle QR Code</h2>
+
+      {% if owner.qr_path %}
+        <img
+          src="/{{ owner.qr_path }}"
+          alt="QR Code"
+          class="mx-auto w-52 h-52 mb-4"
+        >
+
+        <!-- 🔗 QR Scan Link -->
+        <div class="bg-gray-100 rounded-lg p-3 mb-4">
+          <p class="text-sm text-gray-600 mb-1">Scan Link</p>
+        
+          <a href="{{ request.host_url }}q/{{ owner.id }}" target="_blank" class="text-blue-600 underline break-all text-sm">
+            {{ request.host_url }}q/{{ owner.id }}
+          </a>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <a
+            href="/{{ owner.qr_path }}"
+            download
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+          >
+            ⬇ Download QR
+          </a>
+
+          <form action="/generate" method="POST">
+            <button
+              type="submit"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              🔄 Regenerate QR
+            </button>
+          </form>
+        </div>
+
+      {% else %}
+        <p class="text-gray-500 mb-4">
+          You haven’t generated a QR yet.
+        </p>
+
+        <form action="/generate" method="POST">
+          <button
+            type="submit"
+            class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
+          >
+            🔲 Generate QR
+          </button>
+        </form>
+      {% endif %}
+
+    </div>
+
+    <!-- Scan Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <div class="bg-white p-6 rounded-xl shadow text-center">
+        <p class="text-gray-500">Total Scans</p>
+        <p class="text-3xl font-bold">{{ total_scans }}</p>
+      </div>
+
+      <div class="bg-white p-6 rounded-xl shadow">
+        <p class="text-gray-500 mb-2">Last Scan</p>
+
+        {% if last_scan %}
+          <p class="text-sm mb-1">
+            🕒 {{ last_scan.scanned_at }}
+          </p>
+          <a
+            href="{{ last_scan.map_link }}"
+            target="_blank"
+            class="text-blue-600 underline text-sm"
+          >
+            📍 View on Google Maps
+          </a>
+        {% else %}
+          <p class="text-sm text-gray-400">No scans yet</p>
+        {% endif %}
+      </div>
+
+    </div>
+
+
+
+    <!-- Full Scan History -->
+<div class="bg-white p-6 rounded-xl shadow">
+
+  <h2 class="text-xl font-bold mb-4">
+    📍 Scan History
+  </h2>
+
+  {% if scan_history and scan_history|length > 0 %}
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full border border-gray-200 rounded-lg">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">
+              Date & Time
+            </th>
+            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">
+              Location
+            </th>
+            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">
+              Map
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for scan in scan_history %}
+          <tr class="border-t hover:bg-gray-50">
+            <td class="px-4 py-2 text-sm">
+              {{ scan.scanned_at }}
+            </td>
+
+            <td class="px-4 py-2 text-sm">
+              {% if scan.latitude and scan.longitude %}
+                {{ scan.latitude }}, {{ scan.longitude }}
+              {% else %}
+                <span class="text-gray-400">Location not available</span>
+              {% endif %}
+            </td>
+
+            <td class="px-4 py-2 text-sm">
+              {% if scan.map_link %}
+                <a href="{{ scan.map_link }}"
+                   target="_blank"
+                   class="text-blue-600 underline">
+                  🌍 View
+                </a>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% else %}
+    <p class="text-gray-500 text-sm">
+      No scan history available yet.
+    </p>
+  {% endif %}
+
+</div>
+
+
+    <!-- Logout -->
+    <div class="text-center">
+      <a href="/logout" class="text-red-600 underline text-sm">
+        Logout
+      </a>
+    </div>
+
+  </div>
+
+</body>
+</html>
